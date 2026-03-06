@@ -16,6 +16,9 @@ import (
 	"github.com/joho/godotenv"
 )
 
+// Version бота
+const Version = "0.2.0"
+
 // Question представляет вопрос викторины
 type Question struct {
 	ID       int      `json:"id"`
@@ -65,7 +68,7 @@ func main() {
 		log.Fatal("Ошибка создания бота:", err)
 	}
 	bot.Debug = false
-	log.Printf("Бот авторизован: %s", bot.Self.UserName)
+	log.Printf("Бот авторизован: %s (v%s)", bot.Self.UserName, Version)
 
 	// Загружаем вопросы
 	if err := loadQuestions(); err != nil {
