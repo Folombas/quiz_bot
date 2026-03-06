@@ -1,0 +1,40 @@
+# Quiz Bot Configuration - Development
+
+bot:
+  # Токен бота (можно задать через переменную окружения)
+  token_env_var: TELEGRAM_BOT_TOKEN
+  # Максимальное количество соединений
+  max_connections: 100
+  # Таймаут в секундах
+  timeout: 60
+
+database:
+  # Тип БД: sqlite или postgres
+  type: sqlite
+  sqlite:
+    path: data/quiz_bot.db
+  postgres:
+    host: localhost
+    port: 5432
+    user: quiz_bot
+    password: changeme
+    db_name: quiz_bot
+    ssl_mode: disable
+
+log:
+  # Уровень логирования: debug, info, warn, error
+  level: debug
+  # Формат: json или text
+  format: text
+  # Куда писать: stdout, stderr, file
+  output: stdout
+  # Путь к файлу (если output: file)
+  file: logs/quiz_bot.log
+
+rate_limit:
+  # Включить ограничение запросов
+  enabled: true
+  # Запросов в минуту
+  requests_per_min: 30
+  # Размер пакета для burst
+  burst_size: 10

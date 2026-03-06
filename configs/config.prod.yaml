@@ -1,0 +1,21 @@
+# Quiz Bot Configuration - Production
+
+bot:
+  token_env_var: TELEGRAM_BOT_TOKEN
+  max_connections: 200
+  timeout: 120
+
+database:
+  type: sqlite
+  sqlite:
+    path: data/quiz_bot.db
+
+log:
+  level: info
+  format: json
+  output: stdout
+
+rate_limit:
+  enabled: true
+  requests_per_min: 20
+  burst_size: 5

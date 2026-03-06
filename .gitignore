@@ -1,25 +1,46 @@
-# Игнорировать файл с секретами
+# Secrets
 .env
+.env.local
+.env.*.local
 
-# Игнорировать скомпилированные бинарники
+# Binaries
 /quiz_bot
 /quiz-bot
 *.exe
+exe/
 
-# Игнорировать файлы данных (если не хотим хранить статистику в репозитории)
-configs/users.json
-questions.json.bak
+# Database
+data/*.db
+data/*.db-journal
 
-# Игнорировать временные файлы редакторов
+# Config files that may contain secrets
+configs/config.yaml
+configs/config.local.yaml
+
+# Logs
+logs/
+*.log
+
+# Test coverage
+coverage.out
+coverage.html
+
+# IDE
+.vscode/
+.idea/
 *.swp
 *.swo
 *~
+
+# OS
 .DS_Store
-.vscode/
-.idea/
+Thumbs.db
 
-# Игнорировать лог-файлы
-*.log
-
-# Игнорировать Go workspace
+# Go
 go.work
+go.work.sum
+
+# Temporary files
+tmp/
+temp/
+*.tmp
