@@ -334,12 +334,29 @@ func (b *Bot) handleAnswer(callback *tgbotapi.CallbackQuery) {
 		b.logger.Error("Failed to save user", slog.Int64("chat_id", chatID), slog.Any("error", err))
 	}
 
-	// Удаляем клавиатуру
+	// Удаляем клавиатуру у вопроса
 	edit := tgbotapi.NewEditMessageReplyMarkup(chatID, callback.Message.MessageID, tgbotapi.InlineKeyboardMarkup{})
 	b.send(edit)
 
-	// Отправляем результат
-	b.sendText(chatID, resultText)
+	// Отправляем результат с кнопкой "Следующий вопрос"
+	var keyboard tgbotapi.InlineKeyboardMarkup
+	if isInterview {
+		keyboard = tgbotapi.NewInlineKeyboardMarkup(
+			tgbotapi.NewInlineKeyboardRow(
+				tgbotapi.NewInlineKeyboardButtonData("➡️ Следующий вопрос собеседования", "cmd_interview"),
+			),
+		)
+	} else {
+		keyboard = tgbotapi.NewInlineKeyboardMarkup(
+			tgbotapi.NewInlineKeyboardRow(
+				tgbotapi.NewInlineKeyboardButtonData("➡️ Следующий вопрос", "cmd_quiz"),
+			),
+		)
+	}
+	msg := tgbotapi.NewMessage(chatID, resultText)
+	msg.ReplyMarkup = keyboard
+	b.send(msg)
+
 	b.answerCallback(callback.ID, "")
 }
 
