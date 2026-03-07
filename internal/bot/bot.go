@@ -230,6 +230,8 @@ func (b *Bot) handleMessage(msg *tgbotapi.Message) {
 			b.handleInterviewCommand(chatID)
 		case "reset":
 			b.handleResetCommand(chatID)
+		case "keyboard":
+			b.sendKeyboard(chatID)
 		default:
 			b.sendText(chatID, "Неизвестная команда. Напиши /help")
 		}
@@ -451,6 +453,16 @@ func (b *Bot) answerCallback(id string, text string) {
 	b.api.Request(callback)
 }
 
+// sendKeyboard отправляет клавиатуру пользователю
+func (b *Bot) sendKeyboard(chatID int64) {
+	text := "⌨️ Вот твоя клавиатура с кнопками!\n\n" +
+		"Теперь кнопки отображаются внизу под полем ввода."
+
+	msg := tgbotapi.NewMessage(chatID, text)
+	msg.ReplyMarkup = getMainKeyboard()
+	b.send(msg)
+}
+
 // --- Меню и справка ---
 
 // getMainKeyboard возвращает основную клавиатуру с кнопками
@@ -661,7 +673,8 @@ func getHelpText() string {
 		"/interview – вопрос собеседования (Gopher/Go Offer)\n" +
 		"/score – показать твой прогресс\n" +
 		"/leaderboard – топ-10 игроков\n" +
-		"/reset – сбросить список отвеченных вопросов"
+		"/reset – сбросить список отвеченных вопросов\n" +
+		"/keyboard – показать клавиатуру с кнопками"
 }
 
 // setMenuCommands устанавливает команды меню бота
@@ -673,6 +686,7 @@ func (b *Bot) setMenuCommands() error {
 		{Command: "leaderboard", Description: "🏆 Таблица лидеров"},
 		{Command: "reset", Description: "🔄 Сбросить прогресс"},
 		{Command: "help", Description: "ℹ️ Помощь"},
+		{Command: "keyboard", Description: "⌨️ Показать клавиатуру"},
 	}
 
 	cmdConfig := tgbotapi.NewSetMyCommands(commands...)
