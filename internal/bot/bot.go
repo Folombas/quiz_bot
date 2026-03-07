@@ -207,32 +207,57 @@ func (b *Bot) loadInterviewQuestions() error {
 // --- Обработчики ---
 
 func (b *Bot) handleMessage(msg *tgbotapi.Message) {
-	if !msg.IsCommand() {
-		return
-	}
-
 	chatID := msg.Chat.ID
-	b.logger.Info("Command received",
-		slog.Int64("chat_id", chatID),
-		slog.String("command", msg.Command()))
 
-	switch msg.Command() {
-	case "start":
-		b.sendStartMenu(chatID)
-	case "help":
-		b.sendHelp(chatID)
-	case "quiz":
+	// Проверяем, это команда или текст кнопки
+	if msg.IsCommand() {
+		b.logger.Info("Command received",
+			slog.Int64("chat_id", chatID),
+			slog.String("command", msg.Command()))
+
+		switch msg.Command() {
+		case "start":
+			b.sendStartMenu(chatID)
+		case "help":
+			b.sendHelp(chatID)
+		case "quiz":
+			b.handleQuizCommand(chatID)
+		case "score":
+			b.handleScoreCommand(chatID)
+		case "leaderboard":
+			b.sendLeaderboard(chatID)
+		case "interview":
+			b.handleInterviewCommand(chatID)
+		case "reset":
+			b.handleResetCommand(chatID)
+		default:
+			b.sendText(chatID, "Неизвестная команда. Напиши /help")
+		}
+	} else if msg.Text != "" {
+		// Обработка нажатий на кнопки клавиатуры
+		b.handleKeyboardButton(chatID, msg.Text)
+	}
+}
+
+// handleKeyboardButton обрабатывает нажатия на кнопки Reply Keyboard
+func (b *Bot) handleKeyboardButton(chatID int64, text string) {
+	b.logger.Info("Keyboard button pressed",
+		slog.Int64("chat_id", chatID),
+		slog.String("text", text))
+
+	switch text {
+	case "🧠 Начать викторину":
 		b.handleQuizCommand(chatID)
-	case "score":
-		b.handleScoreCommand(chatID)
-	case "leaderboard":
-		b.sendLeaderboard(chatID)
-	case "interview":
+	case "💼 Вопросы к собеседованию":
 		b.handleInterviewCommand(chatID)
-	case "reset":
+	case "📊 Моя статистика":
+		b.handleScoreCommand(chatID)
+	case "🏆 Таблица лидеров":
+		b.sendLeaderboard(chatID)
+	case "🔄 Сбросить прогресс":
 		b.handleResetCommand(chatID)
-	default:
-		b.sendText(chatID, "Неизвестная команда. Напиши /help")
+	case "ℹ️ Помощь":
+		b.sendHelp(chatID)
 	}
 }
 
@@ -428,11 +453,27 @@ func (b *Bot) answerCallback(id string, text string) {
 
 // --- Меню и справка ---
 
+// getMainKeyboard возвращает основную клавиатуру с кнопками
+func getMainKeyboard() tgbotapi.ReplyKeyboardMarkup {
+	keyboard := [][]tgbotapi.KeyboardButton{
+		{tgbotapi.NewKeyboardButton("🧠 Начать викторину")},
+		{tgbotapi.NewKeyboardButton("💼 Вопросы к собеседованию")},
+		{tgbotapi.NewKeyboardButton("📊 Моя статистика"), tgbotapi.NewKeyboardButton("🏆 Таблица лидеров")},
+		{tgbotapi.NewKeyboardButton("🔄 Сбросить прогресс"), tgbotapi.NewKeyboardButton("ℹ️ Помощь")},
+	}
+	return tgbotapi.ReplyKeyboardMarkup{
+		Keyboard:        keyboard,
+		ResizeKeyboard:  true,
+		OneTimeKeyboard: false,
+	}
+}
+
 func (b *Bot) sendStartMenu(chatID int64) {
 	text := "Привет! Я Go-викторина 🧠\n\n" +
 		"Проверь свои знания языка Go. Отвечай на вопросы и получай EXP."
 
-	keyboard := tgbotapi.NewInlineKeyboardMarkup(
+	// Inline-кнопки для быстрых действий
+	inlineKeyboard := tgbotapi.NewInlineKeyboardMarkup(
 		tgbotapi.NewInlineKeyboardRow(
 			tgbotapi.NewInlineKeyboardButtonData("🧠 Начать викторину", "cmd_quiz"),
 		),
@@ -452,8 +493,13 @@ func (b *Bot) sendStartMenu(chatID int64) {
 	)
 
 	msg := tgbotapi.NewMessage(chatID, text)
-	msg.ReplyMarkup = keyboard
+	msg.ReplyMarkup = getMainKeyboard() // Постоянная клавиатура
 	b.send(msg)
+
+	// Дополнительно отправляем inline-кнопки
+	inlineMsg := tgbotapi.NewMessage(chatID, "Выберите действие:")
+	inlineMsg.ReplyMarkup = inlineKeyboard
+	b.send(inlineMsg)
 }
 
 func (b *Bot) sendHelp(chatID int64) {
