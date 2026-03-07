@@ -114,6 +114,11 @@ func (b *Bot) Run() error {
 		b.logger.Info("Interview questions loaded", slog.Int("count", len(b.interviewQuestions)))
 	}
 
+	// Устанавливаем команды меню для всех пользователей
+	if err := b.setMenuCommands(); err != nil {
+		b.logger.Warn("Failed to set menu commands", slog.Any("error", err))
+	}
+
 	// Канал обновлений
 	u := tgbotapi.NewUpdate(0)
 	u.Timeout = b.config.Bot.Timeout
@@ -613,17 +618,18 @@ func getHelpText() string {
 		"/reset – сбросить список отвеченных вопросов"
 }
 
-// LoadQuestionsFromJSON загружает вопросы из JSON файла
-func (b *Bot) LoadQuestionsFromJSON(path string) ([]models.Question, error) {
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return nil, err
+// setMenuCommands устанавливает команды меню бота
+func (b *Bot) setMenuCommands() error {
+	commands := []tgbotapi.BotCommand{
+		{Command: "quiz", Description: "🧠 Начать викторину"},
+		{Command: "interview", Description: "💼 Вопросы к собеседованию"},
+		{Command: "score", Description: "📊 Моя статистика"},
+		{Command: "leaderboard", Description: "🏆 Таблица лидеров"},
+		{Command: "reset", Description: "🔄 Сбросить прогресс"},
+		{Command: "help", Description: "ℹ️ Помощь"},
 	}
 
-	var questions []models.Question
-	if err := json.Unmarshal(data, &questions); err != nil {
-		return nil, err
-	}
-
-	return questions, nil
+	cmdConfig := tgbotapi.NewSetMyCommands(commands...)
+	_, err := b.api.Request(cmdConfig)
+	return err
 }
