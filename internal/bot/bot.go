@@ -324,6 +324,11 @@ func (b *Bot) handleAnswer(callback *tgbotapi.CallbackQuery) {
 		user.Level = newLevel
 	}
 
+	// Записываем вопрос в прогресс
+	if err := b.userRepo.RecordAnswer(chatID, qid, isInterview); err != nil {
+		b.logger.Error("Failed to record answer", slog.Int64("chat_id", chatID), slog.Any("error", err))
+	}
+
 	// Сохраняем прогресс
 	if err := b.userRepo.Save(chatID, user); err != nil {
 		b.logger.Error("Failed to save user", slog.Int64("chat_id", chatID), slog.Any("error", err))
