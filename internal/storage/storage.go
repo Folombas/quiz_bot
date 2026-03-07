@@ -2,15 +2,10 @@ package storage
 
 import (
 	"database/sql"
-	"embed"
 	"fmt"
-	"sort"
 
 	_ "github.com/mattn/go-sqlite3"
 )
-
-//go:embed migrations/*.sql
-var migrationFiles embed.FS
 
 // Storage — обёртка над SQL базой
 type Storage struct {
@@ -53,72 +48,54 @@ func (s *Storage) Migrate() error {
 		return err
 	}
 
-	// Получаем список применённых миграций
-	rows, err := s.db.Query("SELECT version FROM schema_migrations ORDER BY version")
-	if err != nil {
-		return err
-	}
-	defer rows.Close()
-
-	applied := make(map[int]bool)
-	for rows.Next() {
-		var version int
-		if err := rows.Scan(&version); err != nil {
-			return err
-		}
-		applied[version] = true
-	}
-
-	// Получаем список файлов миграций
-	files, err := migrationFiles.ReadDir(".")
+	// Проверяем, применена ли миграция 1
+	var count int
+	err := s.db.QueryRow(`SELECT COUNT(*) FROM schema_migrations WHERE version = 1`).Scan(&count)
 	if err != nil {
 		return err
 	}
 
-	// Сортируем и применяем миграции
-	var versions []int
-	for _, f := range files {
-		if len(f.Name()) < 4 {
-			continue
-		}
-		var v int
-		fmt.Sscanf(f.Name(), "%d", &v)
-		if v > 0 && !applied[v] {
-			versions = append(versions, v)
-		}
-	}
-	sort.Ints(versions)
+	if count == 0 {
+		// Применяем миграцию 1
+		migration1 := `
+		CREATE TABLE IF NOT EXISTS users (
+			chat_id INTEGER PRIMARY KEY,
+			total_exp INTEGER NOT NULL DEFAULT 0,
+			correct_answers INTEGER NOT NULL DEFAULT 0,
+			wrong_answers INTEGER NOT NULL DEFAULT 0,
+			level INTEGER NOT NULL DEFAULT 1,
+			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+			updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+		);
 
-	// Применяем каждую миграцию
-	for _, v := range versions {
-		filename := fmt.Sprintf("%d_", v)
-		for _, f := range files {
-			if len(f.Name()) >= len(filename) && f.Name()[:len(filename)] == filename {
-				data, err := migrationFiles.ReadFile(f.Name())
-				if err != nil {
-					return err
-				}
+		CREATE TABLE IF NOT EXISTS user_quiz_progress (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			chat_id INTEGER NOT NULL,
+			question_id INTEGER NOT NULL,
+			answered_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+			FOREIGN KEY (chat_id) REFERENCES users(chat_id) ON DELETE CASCADE,
+			UNIQUE(chat_id, question_id)
+		);
 
-				// Выполняем миграцию в транзакции
-				tx, err := s.db.Begin()
-				if err != nil {
-					return err
-				}
+		CREATE TABLE IF NOT EXISTS user_interview_progress (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			chat_id INTEGER NOT NULL,
+			question_id INTEGER NOT NULL,
+			answered_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+			FOREIGN KEY (chat_id) REFERENCES users(chat_id) ON DELETE CASCADE,
+			UNIQUE(chat_id, question_id)
+		);
 
-				if _, err := tx.Exec(string(data)); err != nil {
-					tx.Rollback()
-					return err
-				}
+		CREATE INDEX IF NOT EXISTS idx_users_level ON users(level);
+		CREATE INDEX IF NOT EXISTS idx_users_exp ON users(total_exp);
+		CREATE INDEX IF NOT EXISTS idx_quiz_progress_chat ON user_quiz_progress(chat_id);
+		CREATE INDEX IF NOT EXISTS idx_interview_progress_chat ON user_interview_progress(chat_id);
 
-				if _, err := tx.Exec("INSERT INTO schema_migrations (version) VALUES (?)", v); err != nil {
-					tx.Rollback()
-					return err
-				}
+		INSERT INTO schema_migrations (version) VALUES (1);
+		`
 
-				if err := tx.Commit(); err != nil {
-					return err
-				}
-			}
+		if _, err := s.db.Exec(migration1); err != nil {
+			return fmt.Errorf("migration 1 failed: %w", err)
 		}
 	}
 
